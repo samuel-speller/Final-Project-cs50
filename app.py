@@ -111,9 +111,9 @@ def register():
         # check table of registrants to see if username already exists, 
         # user_check will be populated by a username is it does already exist
         res = cur.executemany('''SELECT username 
-                                    FROM Users 
-                                    WHERE username = ?;''', 
-                                    username)
+                                FROM Users 
+                                WHERE username = ?;''', 
+                                username)
         user_check = res.fetchall()
 
         # return error message if user doesn't provide a username
