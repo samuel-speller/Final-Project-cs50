@@ -7,18 +7,27 @@ from sqlite3 import Error
 from flask import redirect, render_template, request, session
 from functools import wraps
 
+#NEED TO EDIT THIS APPOLOGY FUNTION!!
+def apology(message, code=400):
+    """Render message as an apology to user."""
+    def escape(s):
+        """
+        Escape special characters.
 
-#def apology(message, code=400):
-    
-    #need to write someting to render an appology depending on circumstance
- #   return render_template("apology.html", top=code, bottom=escape(message)), code
+        https://github.com/jacebrowning/memegen#special-characters
+        """
+        for old, new in [("-", "--"), (" ", "-"), ("_", "__"), ("?", "~q"),
+                         ("%", "~p"), ("#", "~h"), ("/", "~s"), ("\"", "''")]:
+            s = s.replace(old, new)
+        return s
+    return render_template("apology.html", top=code, bottom=escape(message)), code
 
 
-#function to connect to sqlite databases
+# function to connect to sqlite databases and return errors if not successful
 def create_connection(path):
     connection = None
     try:
-        connection = sqlite3.connect(path)
+        connection = sqlite3.connect(path, check_same_thread=False)
         print("Connection to SQLite DB successful")
     except Error as e:
         print(f"The error '{e}' occurred")
