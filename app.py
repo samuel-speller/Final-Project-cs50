@@ -1,5 +1,6 @@
 from os import environ
 import sqlite3
+from sqlite3 import Error
 from flask import Flask, flash, redirect, render_template, request, session
 from flask_session import Session
 from tempfile import mkdtemp
@@ -59,22 +60,24 @@ def login():
 
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
+        username = request.form.get("username")
+        password = request.form.get("password")
 
         # Ensure username was submitted
-        if not request.form.get("username"):
+        if not username:
             return apology("must provide username", 400)
 
         # Ensure password was submitted
-        elif not request.form.get("password"):
+        elif not password:
             return apology("must provide password", 400)
 
         # Query database for username
-        rows = db.execute("SELECT * FROM users WHERE username = ?", 
-                          request.form.get("username"))
-
+        rows = cur.executemany("SELECT * FROM users WHERE username = ?",
+                               username).fetchall()
+        print(rows)      
         # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0]["hash"], 
-                                                     request.form.get("password")):
+        if len(rows) != 1 or not check_password_hash(rows[0][2], 
+                                                     password):
             return apology("invalid username and/or password", 400)
 
         # Remember which user has logged in
