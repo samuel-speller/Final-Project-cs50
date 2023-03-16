@@ -16,13 +16,6 @@ app.config["SESSION_PERMANENT"] = False
 app.config["SESSION_TYPE"] = "filesystem"
 Session(app)
 
-
-# Set up connection to database
-con = create_connection("irrigation_automation.db")
-# create database cursor to execute sql statements
-cur = con.cursor()
-
-
 # Make sure met office API key is set
 if not environ.get("MET_OFFICE_API_KEY"):
     raise RuntimeError("MET_OFFICE_API_KEY not set")
@@ -43,13 +36,8 @@ def index():
     """Show portfolio of stocks"""
     # get user info
     user_id = session["user_id"]
-    username = db.execute("SELECT username FROM users WHERE id = ?", 
-                          user_id)[0]["username"]
-    cash = usd(db.execute("SELECT cash FROM users WHERE id = ?", 
-                          user_id)[0]["cash"])
 
-    
-
+    return render_template("index.html", username=user_id)
 
 @app.route("/login", methods=["GET", "POST"])
 def login():
@@ -60,6 +48,12 @@ def login():
 
     # User reached route via POST (as by submitting a form via POST)
     if request.method == "POST":
+
+        # Set up connection to database
+        con = create_connection("irrigation_automation.db")
+        # create database cursor to execute sql statements
+        cur = con.cursor()
+
         username = request.form.get("username")
         password = request.form.get("password")
 
@@ -72,16 +66,17 @@ def login():
             return apology("must provide password", 400)
 
         # Query database for username
-        rows = cur.executemany("SELECT * FROM users WHERE username = ?",
-                               username).fetchall()
-        print(rows)      
+        rows = cur.execute("SELECT username, password_hash FROM users WHERE username = ?", [username]).fetchall()
+
         # Ensure username exists and password is correct
-        if len(rows) != 1 or not check_password_hash(rows[0][2], 
-                                                     password):
+        if not len(rows) == 1 or not check_password_hash(rows[0][1], password):
             return apology("invalid username and/or password", 400)
 
         # Remember which user has logged in
-        session["user_id"] = rows[0]["id"]
+        session["user_id"] = rows[0][0]
+
+        # close the connection
+        con.close()
 
         # Redirect user to home page
         return redirect("/")
@@ -102,7 +97,7 @@ def logout():
     return redirect("/")
 
 
-
+# now working
 @app.route("/register", methods=["GET", "POST"])
 def register():
     if request.method == "GET":
@@ -111,12 +106,18 @@ def register():
         # assign username to a variable
         username = request.form.get("username")
 
+        # Set up connection to database
+        con = create_connection("irrigation_automation.db")
+        # create database cursor to execute sql statements
+        cur = con.cursor()
+
         # check table of registrants to see if username already exists, 
         # user_check will be populated by a username is it does already exist
-        res = cur.executemany('''SELECT username 
+        res = cur.execute('''SELECT username 
                                 FROM Users 
-                                WHERE username = ?;''', 
-                                username)
+                                WHERE username = ?''', 
+                                [username])
+        
         user_check = res.fetchall()
 
         # return error message if user doesn't provide a username
@@ -150,6 +151,9 @@ def register():
         
         # commit insert
         con.commit()
+
+        # close the connection
+        con.close()
 
         flash('Registered!')
         return render_template("login.html")
