@@ -47,14 +47,42 @@ def login_required(f):
         return f(*args, **kwargs)
     return decorated_function
 
-
-def lookup(symbol):
-    """Look up quote for symbol."""
+def weather_locations():
+    """get the list of locations available for weather reports"""
 
     # Contact API
     try:
-        api_key = os.environ.get("API_KEY")
-        url = f"https://cloud.iexapis.com/stable/stock/{urllib.parse.quote_plus(symbol)}/quote?token={api_key}"
+        api_key = os.environ.get("MET_OFFICE_API_KEY")
+        # met office site list url
+        url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+    except requests.RequestException:
+        return None
+    
+    # I AM HERE, TRYING TO JUST GET THE NAMS FROM THE DICTIONARY .JSON LOCATION_LIST
+    location_list = response.json()
+    location_names = location_list.get('name')
+    return location_names
+
+    # Parse response
+    #try:
+    #    location_list = response.json()
+    #
+    #    return {
+    #        location_list
+    #    }
+    #except (KeyError, TypeError, ValueError):
+    #    return None
+
+
+def weather(location):
+    """Look up weather data at a location"""
+
+    # Contact API
+    try:
+        api_key = os.environ.get("MET_OFFICE_API_KEY")
+        url = f"http://datapoint.metoffice.gov.uk/public/data/resource?key={api_key}"
         response = requests.get(url)
         response.raise_for_status()
     except requests.RequestException:
@@ -62,7 +90,7 @@ def lookup(symbol):
 
     # Parse response
     try:
-        quote = response.json()
+        location_weather = response.json()
         return {
             "name": quote["companyName"],
             "price": float(quote["latestPrice"]),

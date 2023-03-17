@@ -1,0 +1,12 @@
+MET_API_KEY: f47f0ae1-79fc-4a9c-b4a2-f02d8459a90c
+
+All DataPoint resources have a base URL of http://datapoint.metoffice.gov.uk/public/data/ and must be requested with your API key as a query in the format:
+
+http://datapoint.metoffice.gov.uk/public/data/resource?key=APIkey
+
+e.g. http://datapoint.metoffice.gov.uk/public/data/resource?key=MET_API_KEY
+
+For example, to get a three-hourly five-day forecast for Dunkeswell Aerodrome:
+
+http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/xml/3840?res=3hourly&key=MET_API_KEY
+
