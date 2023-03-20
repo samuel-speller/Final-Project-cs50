@@ -4,6 +4,8 @@ import urllib.parse
 import sqlite3
 from sqlite3 import Error
 from pprint import pprint as pp
+import pandas as pd
+import json
 
 from flask import redirect, render_template, request, session
 from functools import wraps
@@ -62,27 +64,14 @@ def weather_locations():
         return None
 
     # need to just return the names from the location_list
+    # use pandas to make accessing the data easier
     location_list = response.json()
-    location_name_list = {}
 
-    pp(location_list)
+    df = pd.json_normalize(location_list, record_path=['Locations', 'Location'])
 
-    #for key, value in location_list['Locations']['Location']:
-    #    if key == 'name':
-    #        location_name_list[key] = value
+    # I AM HERE!!!
 
     return location_name_list
-
-    # Parse response
-    #try:
-    #    location_list = response.json()
-    #
-    #    return {
-    #        location_list
-    #    }
-    #except (KeyError, TypeError, ValueError):
-    #    return None
-
 
 def weather(location):
     """Look up weather data at a location"""
