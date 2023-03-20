@@ -173,6 +173,6 @@ def weather():
         return render_template("weather_input.html", location_name_list=
                                location_name_list)
     else:
-        location = request.form.get('location') 
+        user_location = request.form.get('location') 
         
-        return render_template("weather_local.html")
+        return render_template("weather_local.html", user_location=user_location)
