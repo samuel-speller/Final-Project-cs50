@@ -3,11 +3,12 @@ import requests
 import urllib.parse
 import sqlite3
 from sqlite3 import Error
+from pprint import pprint as pp
 
 from flask import redirect, render_template, request, session
 from functools import wraps
 
-#NEED TO EDIT THIS APPOLOGY FUNTION!!
+# NEED TO EDIT THIS APPOLOGY FUNTION!!
 def apology(message, code=400):
     """Render message as an apology to user."""
     def escape(s):
@@ -59,11 +60,18 @@ def weather_locations():
         response.raise_for_status()
     except requests.RequestException:
         return None
-    
-    # I AM HERE, TRYING TO JUST GET THE NAMS FROM THE DICTIONARY .JSON LOCATION_LIST
+
+    # need to just return the names from the location_list
     location_list = response.json()
-    location_names = location_list.get('name')
-    return location_names
+    location_name_list = {}
+
+    pp(location_list)
+
+    #for key, value in location_list['Locations']['Location']:
+    #    if key == 'name':
+    #        location_name_list[key] = value
+
+    return location_name_list
 
     # Parse response
     #try:
@@ -98,4 +106,3 @@ def weather(location):
         }
     except (KeyError, TypeError, ValueError):
         return None
-
