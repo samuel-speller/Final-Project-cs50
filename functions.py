@@ -3,10 +3,7 @@ import requests
 import urllib.parse
 import sqlite3
 from sqlite3 import Error
-from pprint import pprint as pp
 import pandas as pd
-import json
-
 from flask import redirect, render_template, request, session
 from functools import wraps
 
@@ -37,6 +34,7 @@ def create_connection(path):
 
     return connection
 
+
 def login_required(f):
     """
     Decorate routes to require login.
@@ -49,6 +47,7 @@ def login_required(f):
             return redirect("/login")
         return f(*args, **kwargs)
     return decorated_function
+
 
 def weather_locations():
     """get the list of locations available for weather reports"""
@@ -67,11 +66,15 @@ def weather_locations():
     # use pandas to make accessing the data easier
     location_list = response.json()
 
+    # create a dataframe from the .json data
+    # ('Locations', 'Location' is used to get into the nested json file)
     df = pd.json_normalize(location_list, record_path=['Locations', 'Location'])
 
-    # I AM HERE!!!
+    # get a list of names from the data
+    location_name_list = df['name']
 
     return location_name_list
+
 
 def weather(location):
     """Look up weather data at a location"""

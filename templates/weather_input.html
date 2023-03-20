@@ -6,14 +6,23 @@
 
 {% block main %}
     <h3> please enter location</h3>
-
-    {{locations}}
     
     <form action="/location" method="post">
-        <div class="mb-3">
-            <input autocomplete="off" autofocus class="form-control mx-auto w-auto" id="username" name="username" placeholder="Username" type="text">
-        </div>
-        <button class="btn btn-primary" type="submit">Submit</button>
+        <input type="text" id="location" name="location" placeholder="Location">
+        
+        <script>
+    $( function() {
+        var availableTags = [
+            {% for location in location_name_list%}
+                "{{location}}",
+            {% endfor %}
+        ];
+        $( "#location" ).autocomplete({
+        source: availableTags
+        });
+        } );
+        </script>
+        <button type="submit" class="btn btn-primary">Submit</button>
     </form>
 
 {% endblock %}

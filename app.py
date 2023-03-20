@@ -165,11 +165,14 @@ def weather():
     # grab user data
     user_id = session["user_id"]
 
-    locations = weather_locations()
+    # use weather_locations funtion to return a list of locations
+    location_name_list = weather_locations()
 
     if request.method == "GET":
 
-        return render_template("weather_input.html", locations=locations)
+        return render_template("weather_input.html", location_name_list=
+                               location_name_list)
     else:
-           
-        return redirect("/")
+        location = request.form.get('location') 
+        
+        return render_template("weather_local.html")
