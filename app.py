@@ -6,7 +6,7 @@ from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, create_connection, weather_locations
+from functions import apology, login_required, create_connection, weather_locations, get_user_weather
 
 # Configure application
 app = Flask(__name__)
@@ -166,13 +166,17 @@ def weather():
     user_id = session["user_id"]
 
     # use weather_locations funtion to return a list of locations
-    location_name_list = weather_locations()
+    locations = weather_locations()
+    location_name_list = weather_locations()['name']
 
     if request.method == "GET":
 
         return render_template("weather_input.html", location_name_list=
                                location_name_list)
     else:
-        user_location = request.form.get('location') 
+        user_location = request.form.get('location')
+        user_weather = get_user_weather(user_location)
         
-        return render_template("weather_local.html", user_location=user_location)
+        return render_template("weather_local.html", 
+                               user_location=user_location,
+                               user_weather=user_weather)

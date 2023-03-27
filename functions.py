@@ -4,6 +4,7 @@ import urllib.parse
 import sqlite3
 from sqlite3 import Error
 import pandas as pd
+import numpy as np
 from flask import redirect, render_template, request, session
 from functools import wraps
 
@@ -50,7 +51,7 @@ def login_required(f):
 
 
 def weather_locations():
-    """get the list of locations available for weather reports"""
+    """get the list of locations, with their id, available for weather reports"""
 
     # Contact API
     try:
@@ -59,42 +60,38 @@ def weather_locations():
         url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={api_key}"
         response = requests.get(url)
         response.raise_for_status()
+        # need to just return the names from the location_list
+        # use pandas to make accessing the data easier
+        location_list = response.json()
+
+        # create a dataframe from the .json data
+        # ('Locations', 'Location' is used to get into the nested json file)
+        df = pd.json_normalize(location_list, record_path=['Locations', 
+                                'Location'])
+
+        # get a list of names from the data
+        locations = df[['name','id']]
+        return locations
+    
     except requests.RequestException:
         return None
 
-    # need to just return the names from the location_list
-    # use pandas to make accessing the data easier
-    location_list = response.json()
-
-    # create a dataframe from the .json data
-    # ('Locations', 'Location' is used to get into the nested json file)
-    df = pd.json_normalize(location_list, record_path=['Locations', 'Location'])
-
-    # get a list of names from the data
-    location_name_list = df['name']
-
-    return location_name_list
-
-
-def weather(location):
+def get_user_weather(location):
     """Look up weather data at a location"""
 
     # Contact API
     try:
         api_key = os.environ.get("MET_OFFICE_API_KEY")
-        url = f"http://datapoint.metoffice.gov.uk/public/data/resource?key={api_key}"
-        response = requests.get(url)
-        response.raise_for_status()
-    except requests.RequestException:
-        return None
+        locations_df = weather_locations()
+        
+        # get the user location id
+        user_location = locations_df.query(f'name=="{location}"')
+        location_id = user_location.iloc[0]['id']
 
-    # Parse response
-    try:
-        location_weather = response.json()
-        return {
-            "name": quote["companyName"],
-            "price": float(quote["latestPrice"]),
-            "symbol": quote["symbol"]
-        }
-    except (KeyError, TypeError, ValueError):
+        # get the various forcast data
+        forcast_five_day_url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/datatype/{location_id}?key={api_key}"
+        response = requests.get(forcast_five_day_url)
+        response.raise_for_status()
+        return response
+    except requests.RequestException:
         return None
