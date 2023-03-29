@@ -8,6 +8,7 @@ import numpy as np
 from flask import redirect, render_template, request, session
 from functools import wraps
 
+
 # NEED TO EDIT THIS APPOLOGY FUNTION!!
 def apology(message, code=400):
     """Render message as an apology to user."""
@@ -50,8 +51,9 @@ def login_required(f):
     return decorated_function
 
 
-def weather_locations():
-    """get the list of locations, with their id, available for weather reports"""
+def forcast_weather_locations():
+    """get the list of locations, with their id, available for weather
+        forcasts"""
 
     # Contact API
     try:
@@ -67,14 +69,43 @@ def weather_locations():
         # create a dataframe from the .json data
         # ('Locations', 'Location' is used to get into the nested json file)
         df = pd.json_normalize(location_list, record_path=['Locations', 
-                                'Location'])
+                               'Location'])
 
         # get a list of names from the data
-        locations = df[['name','id']]
-        return locations
-    
+        forcast_locations = df[['name', 'id']]
+        return forcast_locations
+
     except requests.RequestException:
         return None
+    
+
+def obs_weather_locations():
+    """get the list of locations, with their id, available for weather
+        observations"""
+
+    # Contact API
+    try:
+        api_key = os.environ.get("MET_OFFICE_API_KEY")
+        # met office site list url
+        url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxobs/all/json/sitelist?key={api_key}"
+        response = requests.get(url)
+        response.raise_for_status()
+        # need to just return the names from the location_list
+        # use pandas to make accessing the data easier
+        location_list = response.json()
+
+        # create a dataframe from the .json data
+        # ('Locations', 'Location' is used to get into the nested json file)
+        df = pd.json_normalize(location_list, record_path=['Locations', 
+                               'Location'])
+
+        # get a list of names from the data
+        obs_locations = df[['name', 'id']]
+        return obs_locations
+
+    except requests.RequestException:
+        return None
+
 
 def get_user_weather(location):
     """Look up weather data at a location"""
@@ -83,14 +114,16 @@ def get_user_weather(location):
     try:
         api_key = os.environ.get("MET_OFFICE_API_KEY")
         locations_df = weather_locations()
-        
-        # get the user location id
+
+        # input the users location to get the location id
         user_location = locations_df.query(f'name=="{location}"')
+        # get the location id as a string value from the user_location 
+        # dataframe
         location_id = user_location.iloc[0]['id']
 
         # get the various forcast data
-        forcast_five_day_url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/datatype/{location_id}?key={api_key}"
-        response = requests.get(forcast_five_day_url)
+        three_hourly_url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/{location_id}?res=3hourly&key={api_key}"
+        response = requests.get(three_hourly_url)
         response.raise_for_status()
         return response
     except requests.RequestException:
