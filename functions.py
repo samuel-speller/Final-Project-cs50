@@ -7,6 +7,7 @@ import pandas as pd
 import numpy as np
 from flask import redirect, render_template, request, session
 from functools import wraps
+from typing import Literal
 
 
 # NEED TO EDIT THIS APPOLOGY FUNTION!!
@@ -51,15 +52,26 @@ def login_required(f):
     return decorated_function
 
 
-def forcast_weather_locations():
+def weather_locations(obs_fcs: Literal['obs', 'fcs']):
     """get the list of locations, with their id, available for weather
-        forcasts"""
+        forcasts or observations"""
+    # takes arguments, 'obs' for observation locations and 'fcs' for forcast 
+    # locations
 
     # Contact API
     try:
         api_key = os.environ.get("MET_OFFICE_API_KEY")
-        # met office site list url
-        url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/sitelist?key={api_key}"
+
+        if obs_fcs == 'obs':
+            url = f'''http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/
+                   all/json/sitelist?key={api_key}'''
+        elif obs_fcs == 'fcs':
+            url = f'''http://datapoint.metoffice.gov.uk/public/data/val/wxobs/
+                   all/json/sitelist?key={api_key}'''
+        else:
+            raise ValueError('''Please only use obs or fcs as an argument in 
+                             the Weather_locations function''')
+
         response = requests.get(url)
         response.raise_for_status()
         # need to just return the names from the location_list
@@ -77,43 +89,20 @@ def forcast_weather_locations():
 
     except requests.RequestException:
         return None
-    
-
-def obs_weather_locations():
-    """get the list of locations, with their id, available for weather
-        observations"""
-
-    # Contact API
-    try:
-        api_key = os.environ.get("MET_OFFICE_API_KEY")
-        # met office site list url
-        url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxobs/all/json/sitelist?key={api_key}"
-        response = requests.get(url)
-        response.raise_for_status()
-        # need to just return the names from the location_list
-        # use pandas to make accessing the data easier
-        location_list = response.json()
-
-        # create a dataframe from the .json data
-        # ('Locations', 'Location' is used to get into the nested json file)
-        df = pd.json_normalize(location_list, record_path=['Locations', 
-                               'Location'])
-
-        # get a list of names from the data
-        obs_locations = df[['name', 'id']]
-        return obs_locations
-
-    except requests.RequestException:
-        return None
 
 
-def get_user_weather(location):
+def get_weather_data(obs_fcs, location, resolution: Literal['hourly', 'daily']):
     """Look up weather data at a location"""
+    # use obs for observational data and fcs for forcast data
 
     # Contact API
     try:
         api_key = os.environ.get("MET_OFFICE_API_KEY")
-        locations_df = weather_locations()
+
+        if obs_fcs == 'obs':
+            locations_df = weather_locations('obs')
+        elif obs_fcs == 'fcs':
+            locations_df = weather_locations('obs')
 
         # input the users location to get the location id
         user_location = locations_df.query(f'name=="{location}"')
@@ -121,8 +110,10 @@ def get_user_weather(location):
         # dataframe
         location_id = user_location.iloc[0]['id']
 
-        # get the various forcast data
-        three_hourly_url = f"http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/all/json/{location_id}?res=3hourly&key={api_key}"
+        # get the forcast/observation data
+        three_hourly_url = f'''http://datapoint.metoffice.gov.uk/public/data/
+                            val/wxfcs/all/json/{location_id}
+                            ?res={resolution}&key={api_key}'''
         response = requests.get(three_hourly_url)
         response.raise_for_status()
         return response

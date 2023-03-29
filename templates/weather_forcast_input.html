@@ -1,0 +1,29 @@
+{% extends "layout.html" %}
+
+{% block title %}
+    Weather_forcast_input
+{% endblock %}
+
+{% block main %}
+    <h3> please enter location</h3>
+    
+    <form action="/weatherforcast" method="post">
+        <input type="text" id="location" name="location" placeholder="Location">
+        
+        <script>
+    $( function() {
+        var availableTags = [
+            {% for location in location_name_list%}
+                "{{location}}",
+            {% endfor %}
+        ];
+        $( "#location" ).autocomplete({
+        source: availableTags
+        });
+        } );
+        </script>
+        <button type="submit" class="btn btn-primary">Submit</button>
+    </form>
+
+{% endblock %}
+

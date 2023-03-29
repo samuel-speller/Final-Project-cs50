@@ -1,10 +1,12 @@
 {% extends "layout.html" %}
 
 {% block title %}
-    Weather_local
+    Weather_history
 {% endblock %}
 
 {% block main %}
     <h2> The weather in <b>{{user_location}}</b> </h2>
+
+    {user_weather_obs}
 
 {% endblock %}

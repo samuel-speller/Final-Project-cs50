@@ -6,7 +6,13 @@ from flask_session import Session
 from tempfile import mkdtemp
 from werkzeug.security import check_password_hash, generate_password_hash
 
-from functions import apology, login_required, create_connection, forcast_weather_locations, get_user_weather
+from functions import (
+    apology,
+    login_required,
+    create_connection,
+    weather_locations,
+    get_weather_data
+)
 
 # Configure application
 app = Flask(__name__)
@@ -158,26 +164,50 @@ def register():
         return render_template("login.html")
 
 
-@app.route("/weather", methods=["GET", "POST"])
+@app.route("/weatherforcast", methods=["GET", "POST"])
 @login_required
-def weather():
-    """Weather Page"""
-    # grab user data
-    user_id = session["user_id"]
+def weatherforcast():
+    """Weather forcast Page"""
+    # possible might need to use this line to get user data
+    # user_id = session["user_id"]
 
     # use weather_locations funtion to return a list of locations
-    location_name_list = forcast_weather_locations()['name']
+    location_name_list = weather_locations('fcs')['name']
 
     if request.method == "GET":
 
-        return render_template("weather_input.html",
+        return render_template("weather_forcast_input.html",
                                location_name_list=location_name_list
                                )
     else:
         user_location = request.form.get('location')
-        user_weather = get_user_weather(user_location)
+        user_weather = get_weather_data('fcs', user_location)
         
-        return render_template("weather_local.html", 
+        return render_template("weather_forcast.html", 
                                user_location=user_location,
                                user_weather=user_weather
+                               )
+
+@app.route("/weatherhistory", methods=["GET", "POST"])
+@login_required
+def weatherhistory():
+    """Weather history Page"""
+    # grab user data
+    user_id = session["user_id"]
+
+    # use weather_locations funtion to return a list of locations
+    location_name_list = weather_locations(obs_fcs='obs')['name']
+
+    if request.method == "GET":
+
+        return render_template("weather_history_input.html",
+                               location_name_list=location_name_list
+                               )
+    else:
+        user_location = request.form.get('location')
+        user_weather_obs = get_weather_data('obs', user_location)
+        
+        return render_template("weather_history.html", 
+                               user_location=user_location,
+                               user_weather_obs=user_weather_obs
                                )
