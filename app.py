@@ -192,8 +192,6 @@ def weatherforcast():
 @login_required
 def weatherhistory():
     """Weather history Page"""
-    # grab user data
-    user_id = session["user_id"]
 
     # use weather_locations funtion to return a list of locations
     location_name_list = weather_locations(obs_fcs='obs')['name']

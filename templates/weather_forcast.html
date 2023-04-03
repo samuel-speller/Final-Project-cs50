@@ -7,4 +7,6 @@
 {% block main %}
     <h2> The weather in <b>{{user_location}}</b> </h2>
 
+    {{user_weather | safe}}
+
 {% endblock %}

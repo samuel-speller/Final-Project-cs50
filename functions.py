@@ -8,6 +8,7 @@ import numpy as np
 from flask import redirect, render_template, request, session
 from functools import wraps
 from typing import Literal
+import json
 
 
 # NEED TO EDIT THIS APPOLOGY FUNTION!!
@@ -58,19 +59,22 @@ def weather_locations(obs_fcs: Literal['obs', 'fcs']):
     # takes arguments, 'obs' for observation locations and 'fcs' for forcast 
     # locations
 
+    # set up the endpoint and parameters for the met office api
+
+    endpoint = 'http://datapoint.metoffice.gov.uk/public/data/val/'
+    if obs_fcs == 'obs':
+        wtype = 'wxobs/all/json/'
+    elif obs_fcs == 'fcs':
+        wtype = 'wxfcs/all/json/'
+    else:
+        raise ValueError('''Please only use obs or fcs as an argument in 
+                            the Weather_locations function''')
+    
     # Contact API
     try:
         api_key = os.environ.get("MET_OFFICE_API_KEY")
 
-        if obs_fcs == 'obs':
-            url = f'''http://datapoint.metoffice.gov.uk/public/data/val/wxfcs/
-                   all/json/sitelist?key={api_key}'''
-        elif obs_fcs == 'fcs':
-            url = f'''http://datapoint.metoffice.gov.uk/public/data/val/wxobs/
-                   all/json/sitelist?key={api_key}'''
-        else:
-            raise ValueError('''Please only use obs or fcs as an argument in 
-                             the Weather_locations function''')
+        url = endpoint + wtype + 'sitelist?key=' + api_key
 
         response = requests.get(url)
         response.raise_for_status()
@@ -91,9 +95,11 @@ def weather_locations(obs_fcs: Literal['obs', 'fcs']):
         return None
 
 
-def get_weather_data(obs_fcs, location, resolution: Literal['hourly', 'daily']):
+def get_weather_data(obs_fcs, location):
     """Look up weather data at a location"""
     # use obs for observational data and fcs for forcast data
+
+    endpoint = 'http://datapoint.metoffice.gov.uk/public/data/val/'
 
     # Contact API
     try:
@@ -101,8 +107,13 @@ def get_weather_data(obs_fcs, location, resolution: Literal['hourly', 'daily']):
 
         if obs_fcs == 'obs':
             locations_df = weather_locations('obs')
+            # set the redolution for obs data
+            res = '?res=hourly'
+            wtype = 'wxobs/all/json/'
         elif obs_fcs == 'fcs':
-            locations_df = weather_locations('obs')
+            locations_df = weather_locations('fcs')
+            res = '?res=3hourly'
+            wtype = 'wxfcs/all/json/'
 
         # input the users location to get the location id
         user_location = locations_df.query(f'name=="{location}"')
@@ -111,11 +122,48 @@ def get_weather_data(obs_fcs, location, resolution: Literal['hourly', 'daily']):
         location_id = user_location.iloc[0]['id']
 
         # get the forcast/observation data
-        three_hourly_url = f'''http://datapoint.metoffice.gov.uk/public/data/
-                            val/wxfcs/all/json/{location_id}
-                            ?res={resolution}&key={api_key}'''
-        response = requests.get(three_hourly_url)
+        data_url = endpoint + wtype + location_id + res + '&key=' + api_key
+        response = requests.get(data_url)
         response.raise_for_status()
-        return response
+
+        # convert this data into html so we can call it in jinja template
+        json_data = json.loads(response.text)
+
+        if obs_fcs == 'fcs':
+            df = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"][0]["Rep"])
+            weather_df = df[["$","W","T","D","Pp","H"]].rename(columns={"$":"Time", "W":"Weather Type", "T":"Temperature (Celsius)", "D":"Wind Direction", "Pp":"Precipitation Probability", "H":"Humidity"})
+        elif obs_fcs == 'obs':
+            # get the parameters and names from the data
+            param_df = pd.json_normalize(json_data["SiteRep"]["Wx"]["Param"])
+            
+            # the 'name' holds the letter symbols for each parameter
+            symbols = param_df['name'].tolist()
+            # the '$' holds the name of that parameter as a string
+            names = param_df['$'].tolist()
+            
+            # obtain and then sort the data so we can put it into an html table
+            df = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"])
+            df = df.drop('type', axis='columns')
+            df = df.rename(columns={'value':'Day'})
+
+            # we need to explode out the dataframe as the data comes in nested
+            # dictionaries
+            df_expand = df.explode('Rep')
+            df_expand = df_expand['Rep'].apply(pd.Series)
+            weather_df = pd.concat([df['Day'], df_expand], axis=1)
+
+            # replace the symbols in the column names with descriptions
+            for i in range(len(names)):
+                weather_df.rename(columns={symbols[i]:names[i]}, inplace=True)
+
+            # rename '$' with 'time
+            weather_df.rename(columns={'$':'Time'}, inplace=True)
+
+            # reorder the columns so time is at the front
+            time = weather_df['Time']
+            weather_df = weather_df.drop(columns=['Time'])
+            weather_df.insert(loc=1, column='Time', value=time)
+
+        return weather_df.to_html(index=False)
     except requests.RequestException:
         return None
