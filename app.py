@@ -168,7 +168,7 @@ def register():
 @login_required
 def weatherforcast():
     """Weather forcast Page"""
-    # possible might need to use this line to get user data
+    # possibly might need to use this line to get user data
     # user_id = session["user_id"]
 
     # use weather_locations funtion to return a list of locations
