@@ -9,6 +9,7 @@ from flask import redirect, render_template, request, session
 from functools import wraps
 from typing import Literal
 import json
+import datetime
 
 
 # NEED TO EDIT THIS APPOLOGY FUNTION!!
@@ -132,6 +133,24 @@ def get_weather_data(obs_fcs, location):
         if obs_fcs == 'fcs':
             df = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"][0]["Rep"])
             weather_df = df[["$","W","T","D","Pp","H"]].rename(columns={"$":"Time", "W":"Weather Type", "T":"Temperature (Celsius)", "D":"Wind Direction", "Pp":"Precipitation Probability", "H":"Humidity"})
+
+            # rename the time data so it is more readable 
+            # by default it is writted as minutes after the current time
+            # we want to change this to actual time
+            
+            # I AM HERE!!! NEED TO GET THIS WORKING
+            # grab current time in unix format
+            time = datetime.now().timestamp()\
+            time = int(time)
+            
+            # add the minutes grabbed from the met office api
+            col = weather_df['Time']
+            new_col = ((col * 60) + time)
+
+            # convert from unix to uk time
+            british_time_col = new_col.apply(lambda x: convert_to_british_time(x))
+            weather_df['Time'] = british_time_col
+
         elif obs_fcs == 'obs':
             # get the parameters and names from the data
             param_df = pd.json_normalize(json_data["SiteRep"]["Wx"]["Param"])
@@ -167,3 +186,8 @@ def get_weather_data(obs_fcs, location):
         return weather_df.to_html(index=False)
     except requests.RequestException:
         return None
+    
+def convert_to_british_time(unix_time):
+    dt_object = datetime.datetime.fromtimestamp(unix_time)
+    british_time = dt_object.strftime('%Y-%m-%d %H:%M:%S %Z')
+    return british_time
