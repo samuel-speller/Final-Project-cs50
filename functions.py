@@ -9,7 +9,7 @@ from flask import redirect, render_template, request, session
 from functools import wraps
 from typing import Literal
 import json
-import datetime
+from datetime import datetime, timedelta
 
 
 # NEED TO EDIT THIS APPOLOGY FUNTION!!
@@ -116,10 +116,11 @@ def get_weather_data(obs_fcs, location):
             res = '?res=3hourly'
             wtype = 'wxfcs/all/json/'
 
-        # input the users location to get the location id
+        # input the users location to get the location id.
         user_location = locations_df.query(f'name=="{location}"')
-        # get the location id as a string value from the user_location 
-        # dataframe
+        
+        # get the location id as a string value from the user_location
+        # dataframe.
         location_id = user_location.iloc[0]['id']
 
         # get the forcast/observation data
@@ -127,39 +128,51 @@ def get_weather_data(obs_fcs, location):
         response = requests.get(data_url)
         response.raise_for_status()
 
-        # convert this data into html so we can call it in jinja template
+        # pull data from the API
         json_data = json.loads(response.text)
 
+        # write json data to file to analyse it.
+        with open("weather.json","w") as f:
+            f.write(json.dumps(json_data))
+
         if obs_fcs == 'fcs':
-            df = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"][0]["Rep"])
-            weather_df = df[["$","W","T","D","Pp","H"]].rename(columns={"$":"Time", "W":"Weather Type", "T":"Temperature (Celsius)", "D":"Wind Direction", "Pp":"Precipitation Probability", "H":"Humidity"})
+            # pull data from met office api and sort the relevant values.
 
-            # rename the time data so it is more readable 
-            # by default it is writted as minutes after the current time
-            # we want to change this to actual time
+            # create empty dataframe
+            df = pd.DataFrame()
             
-            # I AM HERE!!! NEED TO GET THIS WORKING
-            # grab current time in unix format
-            time = datetime.now().timestamp()\
-            time = int(time)
-            
-            # add the minutes grabbed from the met office api
-            col = weather_df['Time']
-            new_col = ((col * 60) + time)
+            # iterate over the days in the api data
+            for i in range(5):
+                df1 = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"][i]["Rep"])
 
-            # convert from unix to uk time
-            british_time_col = new_col.apply(lambda x: convert_to_british_time(x))
-            weather_df['Time'] = british_time_col
+                # rename the time data so it is more readable.
+                # by default it is writted as minutes after midnight.
+                # we want to change this to actual time.
+
+                # define funtion to add minutes from met office api on to the
+                # current time, then format the datetime object to make it more
+                # readable.
+
+                def add_minutes(min):
+                    time_now = datetime.now()
+                    # set datetime to midnight (previous midnight) on todays date
+                    time = time_now.replace(hour=0, minute=0, second=0, microsecond=0)
+                    return (time + timedelta(minutes=int(min), days=i)).strftime('%d-%m-%Y %H:%M')
+
+                df1['$'] = df1['$'].apply(add_minutes)
+                df = df.append(df1)
+
+            weather_df = df[["$","W","T","D","Pp","H"]].rename(columns={"$":"Date/Time", "W":"Weather Type", "T":"Temperature (Celsius)", "D":"Wind Direction", "Pp":"Precipitation Probability", "H":"Humidity"})
 
         elif obs_fcs == 'obs':
             # get the parameters and names from the data
             param_df = pd.json_normalize(json_data["SiteRep"]["Wx"]["Param"])
-            
+
             # the 'name' holds the letter symbols for each parameter
             symbols = param_df['name'].tolist()
             # the '$' holds the name of that parameter as a string
             names = param_df['$'].tolist()
-            
+
             # obtain and then sort the data so we can put it into an html table
             df = pd.json_normalize(json_data["SiteRep"]["DV"]["Location"]["Period"])
             df = df.drop('type', axis='columns')
@@ -186,8 +199,4 @@ def get_weather_data(obs_fcs, location):
         return weather_df.to_html(index=False)
     except requests.RequestException:
         return None
-    
-def convert_to_british_time(unix_time):
-    dt_object = datetime.datetime.fromtimestamp(unix_time)
-    british_time = dt_object.strftime('%Y-%m-%d %H:%M:%S %Z')
-    return british_time
+
